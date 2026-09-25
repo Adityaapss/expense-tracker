@@ -134,28 +134,30 @@ Reports
 - `GET /api/reports/monthly?month=2026-09` (total, by category)
 - `GET /api/reports/trend?months=6` (month-by-month totals)
 
-Groups & splits (Phase 1, last part)
-- `POST /api/groups`, `GET /api/groups`, `POST /api/groups/{id}/expenses`,
-  `GET /api/groups/{id}/balances`
-
 Imports (Version 2)
 - `POST /api/imports/sms` (Android sends parsed transaction data)
 - `POST /api/imports/statement` (PDF/CSV upload)
 
+Groups & splits (Version 2)
+- `POST /api/groups`, `GET /api/groups`, `POST /api/groups/{id}/expenses`,
+  `GET /api/groups/{id}/balances`
+
 ## 8. Features and roadmap
 
 ### Version 1 – Core app (current focus)
-1. Project setup, database, Alembic  <- CURRENT STEP
-2. Register / login with JWT
-3. Categories (default + custom)
-4. Expenses: add, edit, delete, list, filter by month and category
-5. Budgets per category per month, warnings at 80% and 100%
+1. Project setup, database, Alembic ✅
+2. Register / login with JWT ✅
+3. Categories (default + custom) ✅
+4. Expenses: add, edit, delete, list, filter by month and category ✅
+5. Budgets per category per month, warnings at 80% and 100% ✅
 6. Reports: total per month, spending by category (pie chart data),
-   month-to-month trend (bar chart data)
-7. Shared expenses: groups, who paid, who owes whom
-8. Connect the Kotlin Android app
+   month-to-month trend (bar chart data) ✅
+7. Connect the Kotlin Android app  <- CURRENT STEP
 
-### Version 2 – Automatic UPI detection
+Shared expenses (groups, who paid, who owes whom) was originally planned for
+Version 1 but has been moved to Version 2 - see below.
+
+### Version 2 – Automatic UPI detection + shared expenses
 - Android app reads bank SMS ("Rs.250 debited via UPI to Swiggy") and payment
   app notifications (PhonePe, Paytm, GPay), extracts amount + merchant,
   sends to backend
@@ -164,6 +166,7 @@ Imports (Version 2)
 - Duplicate detection (same payment from SMS and notification counted once)
 - Note: SMS reading on Android happens in the app, not the backend. Google Play
   restricts SMS permission, so all three methods are kept as fallbacks.
+- Shared expenses: groups, who paid, who owes whom (moved from Version 1)
 
 ### Version 3 – Sharing extras and smart features
 - Recurring expenses (rent, subscriptions, EMIs)
@@ -210,10 +213,25 @@ Rules for AI features:
 - venv created (Python 3.13, needed since macOS's built-in python3 is 3.9),
   requirements installed, .env created, Alembic set up, tables created in
   Postgres (expense_db)
-- Register/login with JWT built and tested:
-  - `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
-  - `app/core/security.py` (bcrypt hashing, JWT create/decode)
-  - `app/core/deps.py` (`get_current_user`, used to protect routes)
-  - `app/services/auth_service.py` (register/login logic)
-  - `app/schemas/user.py` (`UserCreate`, `UserLogin`, `UserOut`, `Token`)
-- Next: Categories (default + custom)
+- Auth built and tested: `POST /api/auth/register`, `POST /api/auth/login`,
+  `GET /api/auth/me` (`core/security.py`, `core/deps.py`, `services/auth_service.py`,
+  `schemas/user.py`)
+- Categories built and tested: `GET/POST /api/categories`, `DELETE /api/categories/{id}`.
+  Default categories (Food, Travel, etc.) are seeded via an Alembic data
+  migration (`alembic/versions/e908047d0fb3_seed_default_categories.py`), not a
+  manual script
+- Expenses built and tested: `GET/POST /api/expenses`, `PUT/DELETE /api/expenses/{id}`,
+  with month + category filtering and pagination
+- Budgets built and tested: `GET/POST /api/budgets`. `POST` acts as create-or-update
+  (upsert) per category+month since there's no separate `PUT /api/budgets/{id}`.
+  Response includes computed `spent`, `percent_used`, and `status`
+  (`ok` / `warning` at 80% / `over` at 100%)
+- Reports built and tested: `GET /api/reports/monthly` (total + category
+  breakdown), `GET /api/reports/trend` (month-by-month totals, zero-filled for
+  months with no spending)
+- `app/services/date_utils.py` holds the shared "YYYY-MM" → month date-range
+  helper used by expenses, budgets, and reports
+- Backend side of Version 1 core is functionally complete except connecting
+  the Android app. Shared expenses (groups/splits) was moved out of Version 1
+  into Version 2 - see section 8
+- Next: connect the Kotlin Android app
